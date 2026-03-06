@@ -1,15 +1,20 @@
 workflows:
   build-android:
-    name: Build Android APK
+    name: Build Android APK (Expo)
     max_build_duration: 60
     instance_type: mac_mini_m2
+    environment:
+      node: 20.11.0
     scripts:
-      - flutter clean || true
-      - flutter pub get
-      - flutter build apk --release --split-per-abi
+      - name: Install dependencies
+        script: npm install
+      - name: Expo prebuild
+        script: npx expo prebuild --platform android --clean
+      - name: Build APK
+        script: cd android && ./gradlew assembleRelease
     artifacts:
-      - build/app/outputs/flutter-apk/*.apk
+      - android/app/build/outputs/apk/release/*.apk
     publishing:
       email:
         recipients:
-          - RPERKO28@gmail.com   # change this
+          - RPERKO28@gmail.com
