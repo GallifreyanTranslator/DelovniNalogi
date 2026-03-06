@@ -4,10 +4,16 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
-      node: 20.11.0
+      node: 22          # <-- POPRAVLJENO: zdaj uporablja Node 22 (odpravi vse EBADENGINE napake)
+      # flutter in xcode nista potrebna za Expo Android build, zato jih odstranim
+    cache:
+      cache_paths:
+        - $HOME/.npm
+        - $HOME/.gradle
+        - ./node_modules
     scripts:
       - name: Install dependencies
-        script: npm install
+        script: npm ci      # <-- POPRAVLJENO: npm ci je hitrejši in zanesljivejši v CI-ju (namesto npm install)
       - name: Expo prebuild
         script: npx expo prebuild --platform android --clean
       - name: Build APK
