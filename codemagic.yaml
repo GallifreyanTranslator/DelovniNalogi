@@ -15,4 +15,4 @@ workflows:
     publishing:
       email:
         recipients:
-          - your-email@example.com  # change to your email to get notifications
+          - rperko28@gmail.com  # change to your email to get notifications
