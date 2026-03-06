@@ -14,7 +14,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20 # Best for SDK 54/55 in 2026
-          cache: 'npm'
 
       - name: 🏗 Setup Expo/EAS
         uses: expo/expo-github-action@v8
