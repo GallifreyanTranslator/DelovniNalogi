@@ -2,24 +2,27 @@ workflows:
   build-android:
     name: Build Android Release APK
     max_build_duration: 60
-    instance_type: mac_mini_m2
+    instance_type: mac_pro   # ← changed to free-tier safe option (mac_mini_m2 is paid)
     scripts:
-      - name: Aggressive clean
+      - name: Aggressive clean (remove old build artifacts)
         script: |
           flutter clean || true
-          rm -rf android/.gradle android/build build .dart_tool
-      - name: Upgrade & pub get
+          rm -rf android/.gradle android/build build .dart_tool .flutter-plugins*
+          echo "Clean complete"
+      - name: Upgrade Flutter, pub get & doctor check
         script: |
           flutter channel stable
           flutter upgrade --force
           flutter pub get --verbose
-      - name: Debug v1 check
+          flutter doctor -v
+      - name: Debug v1/v2 embedding check
         script: |
           echo "Checking for v1 embedding in manifest..."
-          grep -r "io.flutter.app.FlutterActivity" android/ || echo "No v1 FlutterActivity found"
-          grep -r "flutterEmbedding" android/app/src/main/AndroidManifest.xml || echo "v2 meta-data MISSING!"
-      - name: Build APK
-        script: flutter build apk --release --split-per-abi --verbose
+          grep -r "io.flutter.app.FlutterActivity" android/ || echo "No v1 FlutterActivity found (good!)"
+          echo "Checking for v2 meta-data..."
+          grep "flutterEmbedding" android/app/src/main/AndroidManifest.xml || echo "v2 meta-data MISSING! (critical error)"
+      - name: Build release APK (split per ABI)
+        script: flutter build apk --release --split-per-abi --verbose --no-tree-shake-icons
     artifacts:
       - build/app/outputs/flutter-apk/*.apk
     publishing:
