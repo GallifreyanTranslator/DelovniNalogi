@@ -4,8 +4,10 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
     scripts:
-      - name: Clean previous build (fix old cache issues)
-        script: flutter clean
+      - name: Clean previous build artifacts
+        script: |
+          flutter clean
+          rm -rf android/.gradle
       - name: Upgrade Flutter & get packages
         script: |
           flutter channel stable
