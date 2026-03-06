@@ -4,24 +4,21 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
     scripts:
-      - name: Aggressive clean (remove ALL old artifacts)
+      - name: Aggressive clean
         script: |
           flutter clean || true
           rm -rf android/.gradle android/build build .dart_tool
-          echo "Clean complete"
-      - name: Force Flutter upgrade & pub get
+      - name: Upgrade & pub get
         script: |
           flutter channel stable
           flutter upgrade --force
           flutter pub get --verbose
-          flutter doctor -v
-      - name: Verify v2 embedding setup
+      - name: Debug v1 check
         script: |
-          echo "Checking AndroidManifest for flutterEmbedding v2..."
-          grep "flutterEmbedding" android/app/src/main/AndroidManifest.xml || echo "META-DATA MISSING!"
-          echo "Checking MainActivity..."
-          cat android/app/src/main/kotlin/com/example/delovni_nalogi/MainActivity.kt || echo "MainActivity.kt MISSING!"
-      - name: Build release APK (split per ABI)
+          echo "Checking for v1 embedding in manifest..."
+          grep -r "io.flutter.app.FlutterActivity" android/ || echo "No v1 FlutterActivity found"
+          grep -r "flutterEmbedding" android/app/src/main/AndroidManifest.xml || echo "v2 meta-data MISSING!"
+      - name: Build APK
         script: flutter build apk --release --split-per-abi --verbose
     artifacts:
       - build/app/outputs/flutter-apk/*.apk
