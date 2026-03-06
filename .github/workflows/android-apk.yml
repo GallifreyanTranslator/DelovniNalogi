@@ -1,0 +1,36 @@
+name: Build Android APK
+on:
+  push:
+    branches: [ main ] # Runs every time you push to main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20 # Best for SDK 54/55 in 2026
+          cache: 'npm'
+
+      - name: 🏗 Setup Expo/EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📦 Install Dependencies
+        run: npm install
+
+      - name: 🚀 Build APK (Local)
+        # Using --local saves your EAS cloud build credits!
+        run: eas build --platform android --profile preview --local --non-interactive --output=./build-result.apk
+
+      - name: 📥 Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-app-apk
+          path: ./build-result.apk
