@@ -16,7 +16,7 @@
         </activity>
         <!-- This line forces v2 embedding - REQUIRED -->
         <meta-data
-            android:name="flutterEmbedding"
+            android:name="flutterEmbedding" 
             android:value="2" />
     </application>
 </manifest>
