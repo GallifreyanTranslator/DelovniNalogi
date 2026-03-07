@@ -9,14 +9,15 @@
     "web": "expo start --web",
     "prebuild": "expo prebuild"
   },
-  "dependencies": {
-    "expo": "~55.0.5",
-    "expo-file-system": "~18.0.0",
-    "expo-sharing": "~13.0.0",
-    "react": "19.2.0",
-    "react-native": "0.84.1",
-    "react-native-safe-area-context": "5.2.0",
-    "react-native-screens": "4.6.0"
+"dependencies": {
+  "expo": "~55.0.5",
+  "expo-file-system": "~18.0.0",
+  "expo-sharing": "~13.0.0",
+  "react": "19.2.3",
+  "react-native": "0.84.1",
+  "react-native-safe-area-context": "5.2.0",
+  "react-native-screens": "4.6.0"
+}
   },
   "devDependencies": {
     "@babel/core": "^7.25.2"
