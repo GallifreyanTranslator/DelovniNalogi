@@ -24,38 +24,14 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ─── Patch package.json with correct SDK-compatible versions ──────────
-      - name: Patch package.json dependencies
+      # ─── Add packages that are used in code but missing from package.json ─
+      - name: Patch missing dependencies
         run: |
-          # Core Expo SDK (keep whatever is already set unless missing)
-          npm pkg set dependencies.expo="~52.0.0"
-          npm pkg set dependencies.expo-router="~4.0.0"
-          npm pkg set dependencies.expo-status-bar="~2.0.0"
-          npm pkg set dependencies.expo-splash-screen="~0.29.0"
-          npm pkg set dependencies.expo-file-system="~17.0.1"
-          npm pkg set dependencies.expo-sharing="~12.0.1"
-
-          # Icons
-          npm pkg set dependencies.@expo/vector-icons="^14.0.4"
-
-          # Async Storage
-          npm pkg set dependencies.@react-native-async-storage/async-storage="1.23.1"
-
-          # Navigation / screens / gestures / safe area
-          npm pkg set dependencies.react-native-screens="~4.0.0"
-          npm pkg set dependencies.react-native-safe-area-context="4.12.0"
-          npm pkg set dependencies.react-native-gesture-handler="~2.20.0"
-
-          # Excel export
-          npm pkg set dependencies.xlsx="^0.18.5"
-
-          # React + RN (keep in sync with Expo 52)
-          npm pkg set dependencies.react="18.3.1"
-          npm pkg set dependencies.react-native="0.76.5"
-
-          # Dev / types
-          npm pkg set devDependencies.typescript="^5.3.3"
-          npm pkg set devDependencies."@types/react"="~18.3.12"
+          # expo-file-system and expo-sharing are used for Excel export but missing
+          npm pkg set dependencies.expo-file-system="~20.0.0"
+          npm pkg set dependencies.expo-sharing="~13.0.0"
+          # react-native-gesture-handler is required by expo-router
+          npm pkg set dependencies.react-native-gesture-handler="~2.24.0"
 
       # ─── Install ──────────────────────────────────────────────────────────
       - name: Install npm dependencies
