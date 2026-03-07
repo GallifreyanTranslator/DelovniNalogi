@@ -38,6 +38,13 @@ jobs:
 
       - name: 🚀 Build Debug APK
         run: cd android && ./gradlew assembleDebug --no-daemon
+        
+      - name: 📥 Upload Build Problem Report
+        if: failure() # This only runs if the build fails
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-problem-report
+          path: android/build/reports/problems/
 
       - name: 📥 Upload APK Artifact
         uses: actions/upload-artifact@v4
