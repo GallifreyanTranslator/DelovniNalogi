@@ -1,0 +1,57 @@
+name: Build Android APK
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 🏗 Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: 🔧 Patch package.json
+        # Correcting versions to align with Expo SDK 55 official releases
+        run: |
+          npm pkg set dependencies.expo-web-browser="~1.1.0"
+          npm pkg set dependencies.expo-router="~55.0.0"
+          npm pkg set dependencies.react-native-screens="~4.0.0"
+          npm pkg set dependencies.@expo/vector-icons="~14.0.4"
+          npm pkg set dependencies.@react-native-async-storage/async-storage="~2.2.0"
+          npm pkg set dependencies.expo-file-system="~18.0.12"
+          npm pkg set dependencies.expo-sharing="~13.0.1"
+          npm pkg set dependencies.expo-status-bar="~2.2.0"
+
+      - name: 📦 Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: 🔨 Expo Prebuild
+        # npx is safer than direct pathing in CI environments
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: ⚙️ Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: 🚀 Build Debug APK
+        # Added environment variable to increase memory for the build
+        env:
+          _JAVA_OPTIONS: "-Xmx4g"
+        run: cd android && ./gradlew assembleDebug --no-daemon
+
+      - name: 📥 Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-app-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
