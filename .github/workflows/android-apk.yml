@@ -68,7 +68,12 @@ jobs:
       # ─── Build APK ────────────────────────────────────────────────────────
       - name: Make gradlew executable
         run: chmod +x android/gradlew
-
+        
+      - name: 🚀 Build Debug APKđ
+        run: |
+          cd android
+          ./gradlew assembleDebug --no-daemon --no-configuration-cache
+          
       - name: Build Debug APK
         env:
           GRADLE_OPTS: "-Xmx4g -XX:MaxMetaspaceSize=512m"
