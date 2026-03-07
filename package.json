@@ -14,7 +14,7 @@
     "expo-splash-screen": "~0.29.3",
     "expo-web-browser": "~1.1.0",
     "expo-file-system": "~20.0.0",
-    "expo-sharing": "~13.0.0"
+    "expo-sharing": "~13.0.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.83.1",
