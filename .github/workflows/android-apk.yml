@@ -24,12 +24,17 @@ jobs:
       - name: 📦 Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: 🔍 Ensure expo CLI is available
+      - name: 📦 Install Missing Project Dependencies
         run: |
-          if [ ! -f "./node_modules/.bin/expo" ]; then
-            echo "expo binary not found in node_modules, installing explicitly..."
-            npm install expo expo-router --legacy-peer-deps
-          fi
+          npm install \
+            @expo/vector-icons \
+            @react-native-async-storage/async-storage \
+            xlsx \
+            expo-status-bar \
+            --legacy-peer-deps
+
+      - name: 🔍 Verify expo CLI is available
+        run: |
           echo "expo version: $(./node_modules/.bin/expo --version)"
 
       - name: 🔨 Expo Prebuild (generate Android folder)
