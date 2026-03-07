@@ -1,4 +1,5 @@
 name: Build Android APK
+
 on:
   push:
     branches: [ main ]
@@ -7,47 +8,90 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: 🏗 Checkout Repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🏗 Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
 
-      - name: 🏗 Setup Java 17
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: 📦 Install Dependencies
+      # ─── Patch package.json with correct SDK-compatible versions ──────────
+      - name: Patch package.json dependencies
+        run: |
+          # Core Expo SDK (keep whatever is already set unless missing)
+          npm pkg set dependencies.expo="~52.0.0"
+          npm pkg set dependencies.expo-router="~4.0.0"
+          npm pkg set dependencies.expo-status-bar="~2.0.0"
+          npm pkg set dependencies.expo-splash-screen="~0.29.0"
+          npm pkg set dependencies.expo-file-system="~17.0.1"
+          npm pkg set dependencies.expo-sharing="~12.0.1"
+
+          # Icons
+          npm pkg set dependencies.@expo/vector-icons="^14.0.4"
+
+          # Async Storage
+          npm pkg set dependencies.@react-native-async-storage/async-storage="1.23.1"
+
+          # Navigation / screens / gestures / safe area
+          npm pkg set dependencies.react-native-screens="~4.0.0"
+          npm pkg set dependencies.react-native-safe-area-context="4.12.0"
+          npm pkg set dependencies.react-native-gesture-handler="~2.20.0"
+
+          # Excel export
+          npm pkg set dependencies.xlsx="^0.18.5"
+
+          # React + RN (keep in sync with Expo 52)
+          npm pkg set dependencies.react="18.3.1"
+          npm pkg set dependencies.react-native="0.76.5"
+
+          # Dev / types
+          npm pkg set devDependencies.typescript="^5.3.3"
+          npm pkg set devDependencies."@types/react"="~18.3.12"
+
+      # ─── Install ──────────────────────────────────────────────────────────
+      - name: Install npm dependencies
         run: npm install --legacy-peer-deps
 
-      - name: 🔍 Verify expo binary
+      - name: Verify expo CLI
         run: |
-          ls node_modules/.bin/expo && echo "✅ expo found" || echo "❌ expo missing"
           node_modules/.bin/expo --version
+          echo "✅ expo CLI ready"
 
-      - name: 🔨 Expo Prebuild
+      # ─── Generate native Android project ─────────────────────────────────
+      - name: Expo Prebuild (Android)
         run: node_modules/.bin/expo prebuild --platform android --clean --no-install
 
-      - name: ⚙️ Make gradlew executable
+      # ─── Build APK ────────────────────────────────────────────────────────
+      - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      - name: 🚀 Build Debug APK
-        run: cd android && ./gradlew assembleDebug --no-daemon
-        
-      - name: 📥 Upload Build Problem Report
-        if: failure() # This only runs if the build fails
-        uses: actions/upload-artifact@v4
-        with:
-          name: gradle-problem-report
-          path: android/build/reports/problems/
+      - name: Build Debug APK
+        env:
+          GRADLE_OPTS: "-Xmx4g -XX:MaxMetaspaceSize=512m"
+        run: cd android && ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: 📥 Upload APK Artifact
+      # ─── Artifacts ───────────────────────────────────────────────────────
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: my-app-debug-apk
+          name: app-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+
+      - name: Upload Gradle reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-failure-report
+          path: |
+            android/build/reports/
+            android/app/build/reports/
