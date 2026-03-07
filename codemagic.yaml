@@ -1,33 +1,55 @@
-workflows:
-  build-android:
-    name: Build Android APK (Expo)
-    max_build_duration: 60
-    instance_type: mac_mini_m2
-    environment:
-      node: 22
-      java: 17
-    cache:
-      cache_paths:
-        - $HOME/.npm
-        - $HOME/.gradle/caches
-        - ./node_modules
-    scripts:
-      - name: Install dependencies
-        script: npm ci
+name: Build Android APK
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
-      - name: Expo prebuild (clean regenerate Android folder)
-        script: npx expo prebuild --platform android --clean --no-install
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Make gradlew executable
-        script: chmod +x android/gradlew
+      - name: 🏗 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: Build debug APK
-        script: cd android && ./gradlew assembleDebug --no-daemon
+      - name: 🏗 Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    artifacts:
-      - android/app/build/outputs/apk/debug/*.apk
+      - name: 🔧 Patch package.json
+        run: |
+          # expo-web-browser@~0.4.0 doesn't exist – correct version for SDK 55
+          npm pkg set dependencies.expo-web-browser="~14.0.0"
+          # Add packages used in code but missing from package.json
+          npm pkg set dependencies.@expo/vector-icons="~14.0.4"
+          npm pkg set dependencies.@react-native-async-storage/async-storage="~2.2.0"
+          npm pkg set dependencies.expo-file-system="~18.0.12"
+          npm pkg set dependencies.expo-sharing="~13.0.1"
+          npm pkg set dependencies.expo-status-bar="~2.2.0"
+      - name: 📦 Install Dependencies
+        run: npm install --legacy-peer-deps
 
-    publishing:
-      email:
-        recipients:
-          - RPERKO28@gmail.com
+      - name: 🔍 Verify expo binary
+        run: |
+          ls node_modules/.bin/expo && echo "✅ expo found" || echo "❌ expo missing"
+          node_modules/.bin/expo --version
+      - name: 🔨 Expo Prebuild
+        run: node_modules/.bin/expo prebuild --platform android --clean --no-install
+
+      - name: ⚙️ Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: 🚀 Build Debug APK
+        run: cd android && ./gradlew assembleDebug --no-daemon
+
+      - name: 📥 Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-app-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
