@@ -25,7 +25,7 @@ jobs:
         run: npm install
 
       - name: 🔨 Expo Prebuild (generate Android folder)
-        run: npx expo prebuild --platform android --clean --no-install
+        run: ./node_modules/.bin/expo prebuild --platform android --clean
 
       - name: ⚙️ Make gradlew executable
         run: chmod +x android/gradlew
