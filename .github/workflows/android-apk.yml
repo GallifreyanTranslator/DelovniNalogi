@@ -2,7 +2,7 @@ name: Build Android APK
 on:
   push:
     branches: [ main ]
-  workflow_dispatch: # Allows you to run this manually for testing
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,7 +14,7 @@ jobs:
       - name: 🏗 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # SDK 55 requires Node 20+
+          node-version: 20
 
       - name: 🏗 Setup Java 17
         uses: actions/setup-java@v4
@@ -23,26 +23,35 @@ jobs:
           distribution: 'temurin'
 
       - name: 📦 Install Dependencies
-        # We combine your separate installs to avoid version conflicts
         run: |
           npm install --legacy-peer-deps
-          npm install @expo/vector-icons @react-native-async-storage/async-storage xlsx expo-status-bar --legacy-peer-deps
+          # Install missing packages not yet in package.json
+          npm install \
+            @expo/vector-icons@~14.0.4 \
+            @react-native-async-storage/async-storage@~2.2.0 \
+            expo-file-system@~18.0.12 \
+            expo-sharing@~13.0.1 \
+            expo-status-bar@~2.2.0 \
+            --legacy-peer-deps
+          # Fix expo-web-browser to correct SDK 55 version
+          npm install expo-web-browser@~14.0.0 --legacy-peer-deps
+
+      - name: 🔍 Verify expo binary
+        run: |
+          ls node_modules/.bin/expo && echo "✅ expo found" || echo "❌ expo missing"
+          node_modules/.bin/expo --version
 
       - name: 🔨 Expo Prebuild
-        # Use 'npx expo' instead of pathing to node_modules (cleaner & safer)
-        # --no-install tells it not to run npm install again inside the step
-        run: npx expo prebuild --platform android --clean --no-install
+        run: node_modules/.bin/expo prebuild --platform android --clean --no-install
 
       - name: ⚙️ Make gradlew executable
         run: chmod +x android/gradlew
 
       - name: 🚀 Build Debug APK
-        # No-daemon is key for CI to prevent the runner from hanging
         run: cd android && ./gradlew assembleDebug --no-daemon
 
       - name: 📥 Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: my-app-debug-apk
-          # Path check: In SDK 55, ensure this path matches your build output
           path: android/app/build/outputs/apk/debug/*.apk
