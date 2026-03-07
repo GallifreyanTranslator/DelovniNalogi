@@ -1,25 +1,33 @@
 {
-  "name": "onspace-app",
-  "version": "1.0.0",
-  "main": "expo-router/entry",
-  "scripts": {
-    "start": "expo start",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "web": "expo start --web",
-    "prebuild": "expo prebuild"
-  },
-"dependencies": {
-  "expo": "~55.0.5",
-  "expo-file-system": "~18.0.0",
-  "expo-sharing": "~13.0.0",
-  "react": "19.2.3",
-  "react-native": "0.84.1",
-  "react-native-safe-area-context": "5.2.0",
-  "react-native-screens": "4.6.0"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.25.2"
-  },
-  "private": true
+  "expo": {
+    "name": "DelovniNalogi",
+    "slug": "delovni-nalogi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
 }
