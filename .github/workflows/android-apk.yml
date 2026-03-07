@@ -22,7 +22,15 @@ jobs:
           distribution: 'temurin'
 
       - name: 📦 Install Dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
+
+      - name: 🔍 Ensure expo CLI is available
+        run: |
+          if [ ! -f "./node_modules/.bin/expo" ]; then
+            echo "expo binary not found in node_modules, installing explicitly..."
+            npm install expo expo-router --legacy-peer-deps
+          fi
+          echo "expo version: $(./node_modules/.bin/expo --version)"
 
       - name: 🔨 Expo Prebuild (generate Android folder)
         run: ./node_modules/.bin/expo prebuild --platform android --clean
