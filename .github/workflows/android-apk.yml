@@ -46,8 +46,9 @@ jobs:
           npm pkg set dependencies.expo-file-system="~55.0.0"
           npm pkg set dependencies.expo-sharing="~55.0.0"
 
-          # react-native-gesture-handler is required by expo-router
-          npm pkg set dependencies.react-native-gesture-handler="~2.24.0"
+          # react-native-gesture-handler 2.30.0+ is required for react-native 0.83 (SDK 55)
+          # 2.24.x had a breaking C++ API incompatibility with RN 0.83's shadowNodeFromValue removal
+          npm pkg set dependencies.react-native-gesture-handler="~2.30.0"
 
           echo "📦 Final dependencies:"
           node -e "const p=require('./package.json'); console.log(JSON.stringify(p.dependencies, null, 2))"
