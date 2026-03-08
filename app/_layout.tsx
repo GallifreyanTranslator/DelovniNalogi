@@ -7,24 +7,25 @@ import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { RecordsContext } from '@/contexts/RecordsContext';
 import { Colors, FontSize, Spacing } from '@/constants/theme';
 
-// NOTE: We intentionally do NOT call SplashScreen.preventAutoHideAsync().
-// Letting the native splash auto-hide is the most reliable approach on Android.
-// Instead we show an in-app loading screen while AsyncStorage initialises.
-
-function AppReady({ children }: { children: React.ReactNode }) {
+// ─── Loading overlay ────────────────────────────────────────────────────────
+// CRITICAL: Stack must ALWAYS be rendered on the first frame.
+// Blocking Stack behind a loading gate causes Expo Router to spin at 100% CPU
+// trying to resolve navigation. Instead we render Stack immediately and float
+// a loading overlay on top while AsyncStorage initialises.
+function LoadingOverlay() {
   const ctx = useContext(RecordsContext);
-  const loading = ctx?.loading ?? true;
+  const loading = ctx?.loading ?? false;
 
-  if (loading) {
-    return (
-      <View style={styles.loadingScreen}>
+  if (!loading) return null;
+
+  return (
+    <View style={styles.overlay} pointerEvents="none">
+      <View style={styles.box}>
         <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={styles.loadingText}>Nalaganje...</Text>
       </View>
-    );
-  }
-
-  return <>{children}</>;
+    </View>
+  );
 }
 
 export default function RootLayout() {
@@ -32,9 +33,10 @@ export default function RootLayout() {
     <AlertProvider>
       <SafeAreaProvider>
         <RecordsProvider>
-          <AppReady>
-            <Stack screenOptions={{ headerShown: false }} />
-          </AppReady>
+          {/* Stack ALWAYS renders – never conditionally blocked */}
+          <Stack screenOptions={{ headerShown: false }} />
+          {/* Overlay floats on top while context loads */}
+          <LoadingOverlay />
         </RecordsProvider>
       </SafeAreaProvider>
     </AlertProvider>
@@ -42,10 +44,14 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  loadingScreen: {
-    flex: 1,
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: Colors.background,
     justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  box: {
     alignItems: 'center',
     gap: Spacing.md,
   },
