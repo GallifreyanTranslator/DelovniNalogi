@@ -34,4 +34,7 @@
     "@types/react": "~18.2.79"
   },
   "private": true
+  "overrides": {
+    "react-native-gesture-handler": "~2.24.0"
+  }
 }
