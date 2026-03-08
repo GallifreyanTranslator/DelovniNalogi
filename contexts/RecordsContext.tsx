@@ -43,18 +43,32 @@ export function RecordsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function init() {
-      const [recs, cveh, cwrk] = await Promise.all([
-        loadRecords(),
-        loadCustomVehicles(),
-        loadCustomWorkers(),
-      ]);
-      setRecords(recs);
-      setVehicles([...VEHICLES, ...cveh]);
-      setWorkers([...WORKERS, ...cwrk]);
+    // Timeout safety: if AsyncStorage hangs for any reason (common on fresh
+    // Android installs), we still unblock the UI after 3 seconds.
+    const timeout = setTimeout(() => {
       setLoading(false);
+    }, 3000);
+
+    async function init() {
+      try {
+        const [recs, cveh, cwrk] = await Promise.all([
+          loadRecords(),
+          loadCustomVehicles(),
+          loadCustomWorkers(),
+        ]);
+        setRecords(recs);
+        setVehicles([...VEHICLES, ...cveh]);
+        setWorkers([...WORKERS, ...cwrk]);
+      } catch (e) {
+        console.warn('RecordsContext init error:', e);
+      } finally {
+        clearTimeout(timeout);
+        setLoading(false);
+      }
     }
     init();
+
+    return () => clearTimeout(timeout);
   }, []);
 
   /**
