@@ -33,7 +33,7 @@
     "@babel/core": "^7.24.0",
     "@types/react": "~18.2.79"
   },
-  "private": true
+  "private": true,
   "overrides": {
     "react-native-gesture-handler": "~2.24.0"
   }
