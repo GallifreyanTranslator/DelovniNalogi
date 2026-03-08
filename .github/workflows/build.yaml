@@ -1,4 +1,4 @@
-name: Expo EAS Build - Android Preview
+name: Expo EAS Cloud Build - Android Preview
 
 on:
   push:
@@ -24,25 +24,8 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Install dependencies
+      - name: Install & fix
         run: npm install
 
-      - name: Fix Expo dependencies + FORCE gesture-handler 2.30.0
-        run: |
-          npx expo install --fix
-          npx expo install react-native-gesture-handler
-          npm install react-native-gesture-handler@~2.30.0 --save-exact   # <-- TO JE KLJUČNO ZA CI
-
-      - name: Clean cache (pomembno za local build)
-        run: |
-          rm -rf node_modules
-          rm -f package-lock.json
-          npm cache clean --force
-          npm install
-
-      - name: Run Expo Doctor
-        run: npx expo-doctor
-
-      - name: Build Android Preview (local)
-        run: |
-          eas build --platform android --profile preview --local --non-interactive --output=./build-result.apk --clear-cache
+      - name: Build Android (CLOUD – brez --local)
+        run: eas build --platform android --profile preview --non-interactive
