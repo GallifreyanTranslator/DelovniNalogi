@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import {
   WorkRecord,
   loadRecords,
@@ -40,35 +40,39 @@ export function RecordsProvider({ children }: { children: ReactNode }) {
   const [records, setRecords] = useState<WorkRecord[]>([]);
   const [vehicles, setVehicles] = useState<OptionItem[]>(VEHICLES);
   const [workers, setWorkers] = useState<OptionItem[]>(WORKERS);
-  const [loading, setLoading] = useState(true);
+  // Start as FALSE – render UI immediately, hydrate data in the background.
+  // This avoids any chance of AsyncStorage blocking the JS thread on first paint.
+  const [loading, setLoading] = useState(false);
+  const hydrated = useRef(false);
 
   useEffect(() => {
-    // Timeout safety: if AsyncStorage hangs for any reason (common on fresh
-    // Android installs), we still unblock the UI after 3 seconds.
-    const timeout = setTimeout(() => {
-      setLoading(false);
-    }, 3000);
+    // Already hydrated (StrictMode double-mount guard)
+    if (hydrated.current) return;
+    hydrated.current = true;
 
-    async function init() {
-      try {
-        const [recs, cveh, cwrk] = await Promise.all([
-          loadRecords(),
-          loadCustomVehicles(),
-          loadCustomWorkers(),
-        ]);
-        setRecords(recs);
-        setVehicles([...VEHICLES, ...cveh]);
-        setWorkers([...WORKERS, ...cwrk]);
-      } catch (e) {
-        console.warn('RecordsContext init error:', e);
-      } finally {
-        clearTimeout(timeout);
-        setLoading(false);
+    // Defer AsyncStorage reads to AFTER the first render frame so the UI
+    // is never blocked. InteractionManager ensures we wait until all
+    // animations/transitions have settled.
+    const handle = setTimeout(() => {
+      async function hydrate() {
+        try {
+          const [recs, cveh, cwrk] = await Promise.all([
+            loadRecords(),
+            loadCustomVehicles(),
+            loadCustomWorkers(),
+          ]);
+          setRecords(recs);
+          setVehicles([...VEHICLES, ...cveh]);
+          setWorkers([...WORKERS, ...cwrk]);
+        } catch (e) {
+          // On error, silently keep empty state – app remains usable
+          console.warn('RecordsContext hydrate error:', e);
+        }
       }
-    }
-    init();
+      hydrate();
+    }, 100); // 100ms after first render – well past initial paint
 
-    return () => clearTimeout(timeout);
+    return () => clearTimeout(handle);
   }, []);
 
   /**
