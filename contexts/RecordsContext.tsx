@@ -1,13 +1,10 @@
-import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { MMKV } from 'react-native-mmkv';
+import React, { createContext, useState, ReactNode, useCallback } from 'react';
+import { storage } from '@/services/mmkv';
 import { OptionItem, VEHICLES, WORKERS } from '@/constants/data';
 
-// ─── MMKV instance ────────────────────────────────────────────────────────────
-// MMKV is 100% synchronous — no async bridge, no promises, no deadlocks.
-// It works reliably on HyperOS/MIUI where AsyncStorage and expo-file-system
-// can deadlock due to aggressive background process management.
-const storage = new MMKV({ id: 'work-records-v1' });
-
+// ─── Storage keys ─────────────────────────────────────────────────────────────
+// On real Android devices: storage = MMKV (synchronous, no bridge deadlock)
+// In web/preview:          storage = in-memory Map (no native module needed)
 const KEYS = {
   records: 'records',
   vehicles: 'custom_vehicles',
@@ -30,7 +27,7 @@ function writeJson(key: string, value: unknown): void {
   try {
     storage.set(key, JSON.stringify(value));
   } catch (e) {
-    console.warn('MMKV write error:', key, e);
+    console.warn('Storage write error:', key, e);
   }
 }
 
