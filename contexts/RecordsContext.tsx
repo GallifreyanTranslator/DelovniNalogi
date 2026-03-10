@@ -1,14 +1,55 @@
-import React, { createContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
-import {
-  WorkRecord,
-  loadRecords,
-  saveRecords,
-  loadCustomVehicles,
-  saveCustomVehicles,
-  loadCustomWorkers,
-  saveCustomWorkers,
-} from '@/services/storage';
+import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { MMKV } from 'react-native-mmkv';
 import { OptionItem, VEHICLES, WORKERS } from '@/constants/data';
+
+// ─── MMKV instance ────────────────────────────────────────────────────────────
+// MMKV is 100% synchronous — no async bridge, no promises, no deadlocks.
+// It works reliably on HyperOS/MIUI where AsyncStorage and expo-file-system
+// can deadlock due to aggressive background process management.
+const storage = new MMKV({ id: 'work-records-v1' });
+
+const KEYS = {
+  records: 'records',
+  vehicles: 'custom_vehicles',
+  workers: 'custom_workers',
+};
+
+// ─── Storage helpers (synchronous) ────────────────────────────────────────────
+
+function readJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = storage.getString(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeJson(key: string, value: unknown): void {
+  try {
+    storage.set(key, JSON.stringify(value));
+  } catch (e) {
+    console.warn('MMKV write error:', key, e);
+  }
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface WorkRecord {
+  id: number;
+  datum: string;
+  cas: string;
+  obcina: string;
+  operacija: string;
+  vozilo: string;
+  voziloValue: string;
+  oseba: string;
+  osebaValue: string;
+  tipOsebe: 'voznik' | 'sodelavec';
+  ure: number;
+  skupinaId: number;
+}
 
 interface AddJobPayload {
   obcina: string;
@@ -18,7 +59,6 @@ interface AddJobPayload {
   voznik: OptionItem;
   coworker1: OptionItem | null;
   coworker2: OptionItem | null;
-  /** Single hours value – applied to each person and to the vehicle */
   ure: number;
 }
 
@@ -27,72 +67,42 @@ interface RecordsContextType {
   vehicles: OptionItem[];
   workers: OptionItem[];
   loading: boolean;
-  addJob: (payload: AddJobPayload) => Promise<void>;
-  deleteGroup: (skupinaId: number) => Promise<void>;
-  clearAll: () => Promise<void>;
-  addCustomVehicle: (item: OptionItem) => Promise<void>;
-  addCustomWorker: (item: OptionItem) => Promise<void>;
+  addJob: (payload: AddJobPayload) => void;
+  deleteGroup: (skupinaId: number) => void;
+  clearAll: () => void;
+  addCustomVehicle: (item: OptionItem) => void;
+  addCustomWorker: (item: OptionItem) => void;
 }
 
 export const RecordsContext = createContext<RecordsContextType | undefined>(undefined);
 
+// ─── Provider ─────────────────────────────────────────────────────────────────
+
 export function RecordsProvider({ children }: { children: ReactNode }) {
-  const [records, setRecords] = useState<WorkRecord[]>([]);
-  const [vehicles, setVehicles] = useState<OptionItem[]>(VEHICLES);
-  const [workers, setWorkers] = useState<OptionItem[]>(WORKERS);
-  // Start as FALSE – render UI immediately, hydrate data in the background.
-  // This avoids any chance of AsyncStorage blocking the JS thread on first paint.
-  const [loading, setLoading] = useState(false);
-  const hydrated = useRef(false);
+  // Load synchronously from MMKV — no async, no waiting, instant.
+  const [records, setRecords] = useState<WorkRecord[]>(() =>
+    readJson<WorkRecord[]>(KEYS.records, [])
+  );
+  const [vehicles, setVehicles] = useState<OptionItem[]>(() => {
+    const custom = readJson<OptionItem[]>(KEYS.vehicles, []);
+    return [...VEHICLES, ...custom];
+  });
+  const [workers, setWorkers] = useState<OptionItem[]>(() => {
+    const custom = readJson<OptionItem[]>(KEYS.workers, []);
+    return [...WORKERS, ...custom];
+  });
 
-  useEffect(() => {
-    // Already hydrated (StrictMode double-mount guard)
-    if (hydrated.current) return;
-    hydrated.current = true;
+  // loading is always false — data is available synchronously on first render
+  const loading = false;
 
-    // Defer AsyncStorage reads to AFTER the first render frame so the UI
-    // is never blocked. InteractionManager ensures we wait until all
-    // animations/transitions have settled.
-    const handle = setTimeout(() => {
-      async function hydrate() {
-        try {
-          const [recs, cveh, cwrk] = await Promise.all([
-            loadRecords(),
-            loadCustomVehicles(),
-            loadCustomWorkers(),
-          ]);
-          setRecords(recs);
-          setVehicles([...VEHICLES, ...cveh]);
-          setWorkers([...WORKERS, ...cwrk]);
-        } catch (e) {
-          // On error, silently keep empty state – app remains usable
-          console.warn('RecordsContext hydrate error:', e);
-        }
-      }
-      hydrate();
-    }, 100); // 100ms after first render – well past initial paint
-
-    return () => clearTimeout(handle);
-  }, []);
-
-  /**
-   * Creates one WorkRecord per person involved in the job:
-   *  - voznik  → tipOsebe: 'voznik'   (linked to vehicle)
-   *  - coworker1/2 → tipOsebe: 'sodelavec'
-   * All share the same skupinaId for grouped deletion.
-   */
-  const addJob = useCallback(async (payload: AddJobPayload) => {
+  const addJob = useCallback((payload: AddJobPayload) => {
     const now = new Date();
     const datum = now.toISOString().slice(0, 10);
     const cas = now.toTimeString().slice(0, 8);
     const skupinaId = Date.now();
 
-    const newRecords: WorkRecord[] = [];
-    let idBase = skupinaId;
-
     const base = {
-      datum,
-      cas,
+      datum, cas,
       obcina: payload.obcina,
       operacija: payload.operacija,
       vozilo: payload.vozilo,
@@ -101,67 +111,71 @@ export function RecordsProvider({ children }: { children: ReactNode }) {
       skupinaId,
     };
 
-    // Voznik record
+    const newRecords: WorkRecord[] = [];
+    let idBase = skupinaId;
+
     newRecords.push({
-      id: idBase++,
-      ...base,
+      id: idBase++, ...base,
       oseba: payload.voznik.label,
       osebaValue: payload.voznik.value,
       tipOsebe: 'voznik',
     });
 
-    // Coworker 1
     if (payload.coworker1) {
       newRecords.push({
-        id: idBase++,
-        ...base,
+        id: idBase++, ...base,
         oseba: payload.coworker1.label,
         osebaValue: payload.coworker1.value,
         tipOsebe: 'sodelavec',
       });
     }
 
-    // Coworker 2
     if (payload.coworker2) {
       newRecords.push({
-        id: idBase++,
-        ...base,
+        id: idBase++, ...base,
         oseba: payload.coworker2.label,
         osebaValue: payload.coworker2.value,
         tipOsebe: 'sodelavec',
       });
     }
 
-    const updated = [...records, ...newRecords];
-    setRecords(updated);
-    await saveRecords(updated);
-  }, [records]);
-
-  /** Deletes all records belonging to the same job (skupinaId). */
-  const deleteGroup = useCallback(async (skupinaId: number) => {
-    const updated = records.filter(r => r.skupinaId !== skupinaId);
-    setRecords(updated);
-    await saveRecords(updated);
-  }, [records]);
-
-  const clearAll = useCallback(async () => {
-    setRecords([]);
-    await saveRecords([]);
+    setRecords(prev => {
+      const updated = [...prev, ...newRecords];
+      writeJson(KEYS.records, updated);
+      return updated;
+    });
   }, []);
 
-  const addCustomVehicle = useCallback(async (item: OptionItem) => {
-    const currentCustom = vehicles.slice(VEHICLES.length);
-    const updated = [...currentCustom, item];
-    setVehicles([...VEHICLES, ...updated]);
-    await saveCustomVehicles(updated);
-  }, [vehicles]);
+  const deleteGroup = useCallback((skupinaId: number) => {
+    setRecords(prev => {
+      const updated = prev.filter(r => r.skupinaId !== skupinaId);
+      writeJson(KEYS.records, updated);
+      return updated;
+    });
+  }, []);
 
-  const addCustomWorker = useCallback(async (item: OptionItem) => {
-    const currentCustom = workers.slice(WORKERS.length);
-    const updated = [...currentCustom, item];
-    setWorkers([...WORKERS, ...updated]);
-    await saveCustomWorkers(updated);
-  }, [workers]);
+  const clearAll = useCallback(() => {
+    setRecords([]);
+    writeJson(KEYS.records, []);
+  }, []);
+
+  const addCustomVehicle = useCallback((item: OptionItem) => {
+    setVehicles(prev => {
+      const custom = prev.slice(VEHICLES.length);
+      const updated = [...custom, item];
+      writeJson(KEYS.vehicles, updated);
+      return [...VEHICLES, ...updated];
+    });
+  }, []);
+
+  const addCustomWorker = useCallback((item: OptionItem) => {
+    setWorkers(prev => {
+      const custom = prev.slice(WORKERS.length);
+      const updated = [...custom, item];
+      writeJson(KEYS.workers, updated);
+      return [...WORKERS, ...updated];
+    });
+  }, []);
 
   return (
     <RecordsContext.Provider value={{

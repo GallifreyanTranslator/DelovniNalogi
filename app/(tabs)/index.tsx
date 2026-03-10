@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable,
-  TextInput, KeyboardAvoidingView, Platform,
+  TextInput, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -9,9 +9,7 @@ import { Colors, Spacing, Radius, FontSize, Shadow } from '@/constants/theme';
 import { OptionButton, StepHeader } from '@/components';
 import { LOCATIONS, OPERATIONS, HOURS, OptionItem } from '@/constants/data';
 import { useRecords } from '@/hooks/useRecords';
-import { useAlert } from '@/template';
 
-// Steps: 1=Location 2=Operation 3=Vehicle 4=Worker 5=Coworker1 6=Coworker2 7=Hours 8=Summary
 const TOTAL_STEPS = 8;
 
 interface Selection {
@@ -30,7 +28,6 @@ const EMPTY_SEL: Selection = {
 };
 
 export default function EntryScreen() {
-  const { showAlert } = useAlert();
   const { vehicles, workers, addJob, addCustomVehicle, addCustomWorker } = useRecords();
   const [step, setStep] = useState(1);
   const [sel, setSel] = useState<Selection>(EMPTY_SEL);
@@ -44,14 +41,14 @@ export default function EntryScreen() {
   const goNext = useCallback(() => setStep(s => s + 1), []);
   const reset = useCallback(() => { setSel(EMPTY_SEL); setStep(1); }, []);
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(() => {
     if (!sel.location || !sel.operation || !sel.vehicle || !sel.worker || !sel.hours) {
-      showAlert('Manjkajoči podatki', 'Prosim izpolni vse obvezne korake.');
+      Alert.alert('Manjkajoči podatki', 'Prosim izpolni vse obvezne korake.');
       return;
     }
     setSaving(true);
     try {
-      await addJob({
+      addJob({
         obcina: sel.location.value,
         operacija: sel.operation.value,
         vozilo: sel.vehicle.label,
@@ -61,30 +58,30 @@ export default function EntryScreen() {
         coworker2: sel.coworker2,
         ure: parseFloat(sel.hours.value),
       });
-      showAlert('Shranjeno', 'Zapis je bil uspešno dodan.', [
-        { text: 'Nov vnos', style: 'default', onPress: reset },
+      Alert.alert('Shranjeno', 'Zapis je bil uspešno dodan.', [
+        { text: 'Nov vnos', onPress: reset },
       ]);
     } catch {
-      showAlert('Napaka', 'Shranjevanje ni uspelo.');
+      Alert.alert('Napaka', 'Shranjevanje ni uspelo.');
     } finally {
       setSaving(false);
     }
-  }, [sel, addJob, reset, showAlert]);
+  }, [sel, addJob, reset]);
 
-  const handleAddCustom = useCallback(async () => {
+  const handleAddCustom = useCallback(() => {
     const label = customLabel.trim();
     const value = customValue.trim();
     if (!label || !value) {
-      showAlert('Napaka', 'Prosim vnesi ime in šifro.');
+      Alert.alert('Napaka', 'Prosim vnesi ime in šifro.');
       return;
     }
     const item: OptionItem = { label, value };
-    if (showAddModal === 'vehicle') await addCustomVehicle(item);
-    else await addCustomWorker(item);
+    if (showAddModal === 'vehicle') addCustomVehicle(item);
+    else addCustomWorker(item);
     setCustomLabel('');
     setCustomValue('');
     setShowAddModal(null);
-  }, [customLabel, customValue, showAddModal, addCustomVehicle, addCustomWorker, showAlert]);
+  }, [customLabel, customValue, showAddModal, addCustomVehicle, addCustomWorker]);
 
   const renderStep = () => {
     switch (step) {
@@ -95,7 +92,6 @@ export default function EntryScreen() {
               onSelect={item => { setSel(s => ({ ...s, location: item })); goNext(); }} />
           </StepContent>
         );
-
       case 2:
         return (
           <StepContent step={2} totalSteps={TOTAL_STEPS} title="Izberi operacijo" subtitle="Vrsta dela" onBack={goBack}>
@@ -103,7 +99,6 @@ export default function EntryScreen() {
               onSelect={item => { setSel(s => ({ ...s, operation: item })); goNext(); }} />
           </StepContent>
         );
-
       case 3:
         return (
           <StepContent step={3} totalSteps={TOTAL_STEPS} title="Izberi vozilo" onBack={goBack}
@@ -112,7 +107,6 @@ export default function EntryScreen() {
               onSelect={item => { setSel(s => ({ ...s, vehicle: item })); goNext(); }} />
           </StepContent>
         );
-
       case 4:
         return (
           <StepContent step={4} totalSteps={TOTAL_STEPS} title="Izberi voznika" onBack={goBack}
@@ -121,7 +115,6 @@ export default function EntryScreen() {
               onSelect={item => { setSel(s => ({ ...s, worker: item })); goNext(); }} />
           </StepContent>
         );
-
       case 5:
         return (
           <StepContent step={5} totalSteps={TOTAL_STEPS} title="Sodelavec 1"
@@ -141,7 +134,6 @@ export default function EntryScreen() {
             />
           </StepContent>
         );
-
       case 6:
         return (
           <StepContent step={6} totalSteps={TOTAL_STEPS} title="Sodelavec 2"
@@ -161,7 +153,6 @@ export default function EntryScreen() {
             />
           </StepContent>
         );
-
       case 7:
         return (
           <StepContent step={7} totalSteps={TOTAL_STEPS} title="Število ur" onBack={goBack}>
@@ -169,7 +160,6 @@ export default function EntryScreen() {
               onSelect={item => { setSel(s => ({ ...s, hours: item })); goNext(); }} />
           </StepContent>
         );
-
       case 8:
         return (
           <StepContent step={8} totalSteps={TOTAL_STEPS} title="Pregled in potrditev" onBack={goBack}>
@@ -184,7 +174,6 @@ export default function EntryScreen() {
             </Pressable>
           </StepContent>
         );
-
       default:
         return null;
     }
@@ -237,8 +226,6 @@ export default function EntryScreen() {
   );
 }
 
-// ─── Sub-components ────────────────────────────────────────────────────────────
-
 function StepContent({
   step, totalSteps, title, subtitle, onBack, children, actionLabel, onAction,
 }: {
@@ -250,10 +237,7 @@ function StepContent({
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <StepHeader step={step} totalSteps={totalSteps} title={title} subtitle={subtitle} onBack={onBack} />
       {actionLabel && onAction ? (
-        <Pressable
-          onPress={onAction}
-          style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.7 }]}
-        >
+        <Pressable onPress={onAction} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.7 }]}>
           <Text style={styles.actionBtnLabel}>{actionLabel}</Text>
         </Pressable>
       ) : null}
@@ -274,10 +258,7 @@ function OptionsGrid({
   return (
     <View style={[styles.grid, { gap: Spacing.sm }]}>
       {items.map(item => (
-        <View
-          key={item.value}
-          style={{ width: columns === 1 ? '100%' : columns === 4 ? '23%' : '48%' }}
-        >
+        <View key={item.value} style={{ width: columns === 1 ? '100%' : columns === 4 ? '23%' : '48%' }}>
           <OptionButton
             label={item.label + (columns !== 1 && item.value !== item.label ? '\n' + item.value : '')}
             selected={selected?.value === item.value}
@@ -320,7 +301,7 @@ function SummaryCard({ sel }: { sel: Selection }) {
       {rows.map(row => (
         <View key={row.label} style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>{row.label}</Text>
-          <Text style={styles.summaryValue} numberOfLines={2}>{row.value || '—'}</Text>
+          <Text style={styles.summaryValue} numberOfLines={2}>{row.value ?? '—'}</Text>
         </View>
       ))}
     </View>
@@ -341,8 +322,7 @@ const styles = StyleSheet.create({
   skipNextRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg },
   skipBtn: {
     flex: 1, paddingVertical: Spacing.md, borderRadius: Radius.md,
-    borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.surface,
-    alignItems: 'center',
+    borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.surface, alignItems: 'center',
   },
   skipBtnLabel: { fontSize: FontSize.md, color: Colors.textSecondary, fontWeight: '600' },
   nextBtn: {
@@ -351,10 +331,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'center', gap: 6,
   },
   nextBtnLabel: { fontSize: FontSize.md, color: Colors.textInverse, fontWeight: '700' },
-  summaryCard: {
-    backgroundColor: Colors.surface, borderRadius: Radius.lg,
-    padding: Spacing.md, marginBottom: Spacing.lg, ...Shadow.md,
-  },
+  summaryCard: { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.lg, ...Shadow.md },
   summaryRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
     paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
@@ -370,16 +347,12 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject, backgroundColor: Colors.overlay,
     justifyContent: 'center', alignItems: 'center', zIndex: 99,
   },
-  modalBox: {
-    width: '85%', backgroundColor: Colors.surface, borderRadius: Radius.xl,
-    padding: Spacing.lg, ...Shadow.lg,
-  },
+  modalBox: { width: '85%', backgroundColor: Colors.surface, borderRadius: Radius.xl, padding: Spacing.lg, ...Shadow.lg },
   modalTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text, marginBottom: Spacing.md },
   input: {
     borderWidth: 1.5, borderColor: Colors.border, borderRadius: Radius.md,
     paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm + 2,
-    fontSize: FontSize.md, color: Colors.text, marginBottom: Spacing.sm,
-    backgroundColor: Colors.surfaceAlt,
+    fontSize: FontSize.md, color: Colors.text, marginBottom: Spacing.sm, backgroundColor: Colors.surfaceAlt,
   },
   modalRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
   modalCancel: {
@@ -387,9 +360,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center',
   },
   modalCancelLabel: { fontSize: FontSize.md, color: Colors.textSecondary, fontWeight: '600' },
-  modalConfirm: {
-    flex: 1, paddingVertical: Spacing.sm + 2, borderRadius: Radius.md,
-    backgroundColor: Colors.primary, alignItems: 'center',
-  },
+  modalConfirm: { flex: 1, paddingVertical: Spacing.sm + 2, borderRadius: Radius.md, backgroundColor: Colors.primary, alignItems: 'center' },
   modalConfirmLabel: { fontSize: FontSize.md, color: Colors.textInverse, fontWeight: '700' },
 });
