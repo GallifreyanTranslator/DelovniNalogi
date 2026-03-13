@@ -3,8 +3,8 @@ import { storage } from '@/services/mmkv';
 import { OptionItem, VEHICLES, WORKERS } from '@/constants/data';
 
 // ─── Storage keys ─────────────────────────────────────────────────────────────
-// On real Android devices: storage = MMKV (synchronous, no bridge deadlock)
-// In web/preview:          storage = in-memory Map (no native module needed)
+// On real Android/iOS devices: storage = MMKV (synchronous, no bridge deadlock)
+// In web/preview:              storage = localStorage (persistent across refreshes)
 const KEYS = {
   records: 'records',
   vehicles: 'custom_vehicles',
@@ -23,11 +23,13 @@ function readJson<T>(key: string, fallback: T): T {
   }
 }
 
-function writeJson(key: string, value: unknown): void {
+function writeJson(key: string, value: unknown): boolean {
   try {
     storage.set(key, JSON.stringify(value));
+    return true;
   } catch (e) {
-    console.warn('Storage write error:', key, e);
+    console.error('Storage write error - data not saved:', key, e);
+    return false;
   }
 }
 

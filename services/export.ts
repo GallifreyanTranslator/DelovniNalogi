@@ -178,11 +178,17 @@ async function shareXlsx(rows: (string | number)[][], sheetName: string, filenam
 }
 
 export async function exportWorkersXlsx(records: WorkRecord[]): Promise<void> {
+  if (!Array.isArray(records) || records.length === 0) {
+    throw new Error('No valid records to export');
+  }
   const date = new Date().toISOString().slice(0, 10);
   await shareXlsx(buildWorkersData(records), 'Delavci', `delavci_${date}.xlsx`);
 }
 
 export async function exportVehiclesXlsx(records: WorkRecord[]): Promise<void> {
+  if (!Array.isArray(records) || records.length === 0) {
+    throw new Error('No valid records to export');
+  }
   const date = new Date().toISOString().slice(0, 10);
   await shareXlsx(buildVehiclesData(records), 'Vozila', `vozila_${date}.xlsx`);
 }
