@@ -25,7 +25,8 @@
       "favicon": "./assets/icon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "./plugins/withAndroidOptimizations"
     ],
     "experiments": {
       "typedRoutes": true
