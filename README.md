@@ -1,4 +1,4 @@
-# Welcome to OnSpace AI
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/GallifreyanTranslator/DelovniNalogi?utm_source=oss&utm_medium=github&utm_campaign=GallifreyanTranslator%2FDelovniNalogi&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 Onspace AI empowers anyone to turn ideas into powerful AI applications in minutes—no coding required. Our free, no-code platform enables effortless creation of custom AI apps; simply describe your vision and our agentic AI handles the rest. The onspace-app, built with React Native and Expo, demonstrates this capability—integrating popular third-party libraries to deliver seamless cross-platform performance across iOS, Android, and Web environments.
 
