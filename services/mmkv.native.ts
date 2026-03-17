@@ -1,10 +1,6 @@
-// Native (iOS/Android): real MMKV — synchronous, no async bridge, no deadlocks
-import { MMKV } from 'react-native-mmkv';
-
-const mmkv = new MMKV({ id: 'work-records-v1' });
-
-export const storage = {
-  getString: (key: string): string | undefined => mmkv.getString(key),
-  set: (key: string, value: string): void => mmkv.set(key, value),
-  delete: (key: string): void => mmkv.delete(key),
-};
+// ─── Native storage shim using AsyncStorage (old arch compatible) ─────────────
+// MMKV was removed because it requires JSI/new architecture.
+// With newArchEnabled: false (required for HyperOS stability), MMKV crashes.
+// This file re-exports the same interface using a synchronous in-memory cache
+// that is populated from AsyncStorage in the background — no startup blocking.
+export { storage } from './mmkv';

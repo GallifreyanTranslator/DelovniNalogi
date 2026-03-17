@@ -50,12 +50,12 @@ jobs:
           # 2.24.x had C++ API incompatibility with RN 0.83's shadowNodeFromValue removal
           npm pkg set dependencies.react-native-gesture-handler="~2.30.0"
 
-          # MMKV: synchronous key-value storage — replaces AsyncStorage and expo-file-system
-          # for app data. No async bridge = no deadlock on HyperOS/MIUI Android devices.
-          npm pkg set dependencies.react-native-mmkv="^3.2.0"
+          # AsyncStorage: standard RN key-value storage (old arch compatible)
+          # MMKV was removed — it requires JSI/new arch, which is disabled for HyperOS
+          npm pkg set dependencies.@react-native-async-storage/async-storage="~2.1.2"
 
-          # Remove AsyncStorage — no longer used anywhere in the app
-          npm pkg delete dependencies.@react-native-async-storage/async-storage 2>/dev/null || true
+          # Remove MMKV if present
+          npm pkg delete dependencies.react-native-mmkv 2>/dev/null || true
 
           echo "📦 Final dependencies:"
           node -e "const p=require('./package.json'); console.log(JSON.stringify(p.dependencies, null, 2))"

@@ -1,17 +1,15 @@
-import React, { createContext, useState, ReactNode, useCallback } from 'react';
-import { storage } from '@/services/mmkv';
+import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { storage, hydrateStorage } from '@/services/mmkv';
 import { OptionItem, VEHICLES, WORKERS } from '@/constants/data';
 
 // ─── Storage keys ─────────────────────────────────────────────────────────────
-// On real Android/iOS devices: storage = MMKV (synchronous, no bridge deadlock)
-// In web/preview:              storage = localStorage (persistent across refreshes)
 const KEYS = {
   records: 'records',
   vehicles: 'custom_vehicles',
   workers: 'custom_workers',
 };
 
-// ─── Storage helpers (synchronous) ────────────────────────────────────────────
+// ─── Storage helpers (synchronous reads from in-memory cache) ─────────────────
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -23,13 +21,11 @@ function readJson<T>(key: string, fallback: T): T {
   }
 }
 
-function writeJson(key: string, value: unknown): boolean {
+function writeJson(key: string, value: unknown): void {
   try {
     storage.set(key, JSON.stringify(value));
-    return true;
   } catch (e) {
-    console.error('Storage write error - data not saved:', key, e);
-    return false;
+    console.error('Storage write error:', key, e);
   }
 }
 
@@ -78,21 +74,45 @@ export const RecordsContext = createContext<RecordsContextType | undefined>(unde
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function RecordsProvider({ children }: { children: ReactNode }) {
-  // Load synchronously from MMKV — no async, no waiting, instant.
-  const [records, setRecords] = useState<WorkRecord[]>(() =>
-    readJson<WorkRecord[]>(KEYS.records, [])
-  );
-  const [vehicles, setVehicles] = useState<OptionItem[]>(() => {
-    const custom = readJson<OptionItem[]>(KEYS.vehicles, []);
-    return [...VEHICLES, ...custom];
-  });
-  const [workers, setWorkers] = useState<OptionItem[]>(() => {
-    const custom = readJson<OptionItem[]>(KEYS.workers, []);
-    return [...WORKERS, ...custom];
-  });
+  // Start with empty state — renders immediately, never blocks.
+  const [records, setRecords] = useState<WorkRecord[]>([]);
+  const [customVehicles, setCustomVehicles] = useState<OptionItem[]>([]);
+  const [customWorkers, setCustomWorkers] = useState<OptionItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
-  // loading is always false — data is available synchronously on first render
-  const loading = false;
+  // Hydrate from AsyncStorage AFTER first render — non-blocking.
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      try {
+        // Give the UI exactly one frame to paint before touching storage.
+        await new Promise(r => setTimeout(r, 16));
+        if (cancelled) return;
+
+        await hydrateStorage(Object.values(KEYS));
+        if (cancelled) return;
+
+        const savedRecords = readJson<WorkRecord[]>(KEYS.records, []);
+        const savedVehicles = readJson<OptionItem[]>(KEYS.vehicles, []);
+        const savedWorkers = readJson<OptionItem[]>(KEYS.workers, []);
+
+        if (!cancelled) {
+          if (savedRecords.length > 0) setRecords(savedRecords);
+          if (savedVehicles.length > 0) setCustomVehicles(savedVehicles);
+          if (savedWorkers.length > 0) setCustomWorkers(savedWorkers);
+          setHydrated(true);
+        }
+      } catch {
+        // Hydration failed — app continues with empty state.
+        if (!cancelled) setHydrated(true);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, []);
+
+  const vehicles = [...VEHICLES, ...customVehicles];
+  const workers = [...WORKERS, ...customWorkers];
 
   const addJob = useCallback((payload: AddJobPayload) => {
     const now = new Date();
@@ -159,26 +179,25 @@ export function RecordsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addCustomVehicle = useCallback((item: OptionItem) => {
-    setVehicles(prev => {
-      const custom = prev.slice(VEHICLES.length);
-      const updated = [...custom, item];
+    setCustomVehicles(prev => {
+      const updated = [...prev, item];
       writeJson(KEYS.vehicles, updated);
-      return [...VEHICLES, ...updated];
+      return updated;
     });
   }, []);
 
   const addCustomWorker = useCallback((item: OptionItem) => {
-    setWorkers(prev => {
-      const custom = prev.slice(WORKERS.length);
-      const updated = [...custom, item];
+    setCustomWorkers(prev => {
+      const updated = [...prev, item];
       writeJson(KEYS.workers, updated);
-      return [...WORKERS, ...updated];
+      return updated;
     });
   }, []);
 
   return (
     <RecordsContext.Provider value={{
-      records, vehicles, workers, loading,
+      records, vehicles, workers,
+      loading: !hydrated,
       addJob, deleteGroup, clearAll,
       addCustomVehicle, addCustomWorker,
     }}>
