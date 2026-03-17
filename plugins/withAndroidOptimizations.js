@@ -14,7 +14,6 @@
 
 const {
   withAndroidManifest,
-  withAppBuildGradle,
   withMainApplication,
 } = require('@expo/config-plugins');
 
@@ -118,39 +117,16 @@ function withExtractNativeLibs(config) {
   });
 }
 
-// ─── 4 — android/app/build.gradle: Hermes + bundleInRelease ──────────────────
-// Hermes is the AOT-compiled JS engine shipped with React Native.
-// bundleInRelease=true pre-bundles the JS bundle into the APK so the app
-// doesn't need to download it from Metro at runtime, eliminating JIT warm-up.
+// ─── 4 — android/app/build.gradle: no-op for SDK 55+ ────────────────────────
+// In React Native 0.73+ (Expo SDK 55+), the `react {}` Gradle extension no
+// longer supports `bundleInRelease` or `enableHermes`/`hermesEnabled`.
+// Hermes is enabled by default via `hermesEnabled=true` in gradle.properties,
+// and JS bundling in release is always on.  Injecting these removed properties
+// causes "Could not set unknown property" build failures.
+// This function is kept as a no-op so the compose chain below stays intact.
 
 function withHermesAndBundleRelease(config) {
-  return withAppBuildGradle(config, (mod) => {
-    let contents = mod.modResults.contents;
-
-    // ── Hermes ──
-    // SDK 55 / RN 0.73+ enables Hermes via the react-native gradle plugin.
-    // The old `enableHermes` flag in the react{} block is deprecated; the
-    // correct modern approach is to set it in gradle.properties.  We patch
-    // build.gradle as a belt-and-suspenders measure for older plugin versions.
-    if (!contents.includes('hermesEnabled') && !contents.includes('enableHermes')) {
-      // Insert inside the existing `react {` block
-      contents = contents.replace(
-        /react\s*\{/,
-        'react {\n        // Hermes AOT engine (fixes JIT thread pool overhead)\n        hermesEnabled = true'
-      );
-    }
-
-    // ── bundleInRelease ──
-    if (!contents.includes('bundleInRelease')) {
-      contents = contents.replace(
-        /react\s*\{/,
-        'react {\n        bundleInRelease = true'
-      );
-    }
-
-    mod.modResults.contents = contents;
-    return mod;
-  });
+  return config;
 }
 
 // ─── Compose all plugins ──────────────────────────────────────────────────────
