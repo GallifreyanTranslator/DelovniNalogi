@@ -12,88 +12,17 @@
  *  4. Hermes engine + bundleInRelease           → build.gradle react block
  */
 
-const {
-  withAndroidManifest,
-  withMainApplication,
-} = require('@expo/config-plugins');
+const { withAndroidManifest } = require('@expo/config-plugins');
 
-// ─── 1 & 3 — Patch MainApplication.kt ────────────────────────────────────────
-// Inject asynchronous EmojiCompat initialisation on a background thread so it
-// never blocks the main thread during cold start.  Also moves any other
-// non-essential SDK calls out of onCreate's hot path.
-
-const EMOJI_IMPORT =
-  'import androidx.emoji2.text.EmojiCompat\n' +
-  'import androidx.emoji2.text.FontRequestEmojiCompatConfig\n' +
-  'import androidx.core.provider.FontRequest\n';
-
-const EMOJI_INIT = `
-    // ── Async EmojiCompat init (fix: was blocking main thread for 870 ms) ──
-    // FontRequestEmojiCompatConfig.buildTypeface() downloads / loads the font
-    // on whatever thread EmojiCompat decides to use internally.  By wrapping
-    // the *registration* call in a background thread we prevent it from ever
-    // touching the main-thread message queue during cold start.
-    val emojiHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    Thread {
-      try {
-        val fontRequest = FontRequest(
-          "com.google.android.gms.fonts",
-          "com.google.android.gms",
-          "Noto Color Emoji Compat",
-          R.array.com_google_android_gms_fonts_certs
-        )
-        val config = FontRequestEmojiCompatConfig(applicationContext, fontRequest)
-          .setReplaceAll(true)
-          .registerInitCallback(object : EmojiCompat.InitCallback() {
-            override fun onInitialized() {} // ready — nothing to do on main thread
-            override fun onFailed(throwable: Throwable?) {}
-          })
-        EmojiCompat.init(config)
-      } catch (_: Exception) {
-        // GMS fonts unavailable (emulator/AOSP) — EmojiCompat simply won't init.
-      }
-    }.start()
-`;
+// ─── 1 & 3 — MainApplication.kt patch: disabled ──────────────────────────────
+// The async EmojiCompat init was removed because it injects references to
+// androidx.emoji2 and R.array.com_google_android_gms_fonts_certs into the
+// generated MainApplication.kt, but those dependencies are not automatically
+// included by Expo prebuild, causing "Unresolved reference" Kotlin compile
+// errors.  Expo's default EmojiCompat handling is sufficient.
 
 function withAsyncEmojiCompat(config) {
-  return withMainApplication(config, (mod) => {
-    let contents = mod.modResults.contents;
-
-    // Only patch once
-    if (contents.includes('// ── Async EmojiCompat init')) return mod;
-
-    // Add imports after the last existing import line
-    const importInsertPoint = contents.lastIndexOf('\nimport ');
-    const endOfImport =
-      importInsertPoint !== -1
-        ? contents.indexOf('\n', importInsertPoint) + 1
-        : 0;
-
-    // Inject imports if not already present
-    if (!contents.includes('import androidx.emoji2.text.EmojiCompat')) {
-      contents =
-        contents.slice(0, endOfImport) +
-        EMOJI_IMPORT +
-        contents.slice(endOfImport);
-    }
-
-    // Inject the async init block at the end of onCreate, before the closing
-    // super.onCreate() call or just before the last closing brace of onCreate.
-    // Strategy: insert right after `super.onCreate()` in onCreate().
-    const superOnCreate = 'super.onCreate()';
-    const superIdx = contents.indexOf(superOnCreate);
-    if (superIdx !== -1) {
-      const afterSuper = superIdx + superOnCreate.length;
-      contents =
-        contents.slice(0, afterSuper) +
-        '\n' +
-        EMOJI_INIT +
-        contents.slice(afterSuper);
-    }
-
-    mod.modResults.contents = contents;
-    return mod;
-  });
+  return config;
 }
 
 // ─── 2 — AndroidManifest.xml: extractNativeLibs ───────────────────────────────
