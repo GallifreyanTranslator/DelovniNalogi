@@ -11,11 +11,11 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@expo/vector-icons": "~14.0.4",
+    "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "expo": "~55.0.0",
     "expo-file-system": "~55.0.0",
-    "expo-linear-gradient": "~14.0.0",
+    "expo-linear-gradient": "~55.0.9",
     "expo-router": "~55.0.0",
     "expo-sharing": "~55.0.0",
     "expo-splash-screen": "~55.0.0",
@@ -25,18 +25,17 @@
     "react-dom": "^19.2.0",
     "react-native": "^0.83.1",
     "react-native-gesture-handler": "~2.30.0",
-    "react-native-safe-area-context": "^5.7.0",
+    "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.23.0",
-    "react-native-web": "^0.20.0",
-    "xlsx": "^0.18.5"
+    "react-native-web": "^0.21.2"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
     "@types/node": "^20.19.37",
     "@types/react": "~19.2.0",
     "eslint": "^9.39.4",
-    "eslint-config-expo": "^10.0.0",
-    "typescript": "~5.8.3"
+    "eslint-config-expo": "~55.0.0",
+    "typescript": "~5.9.2"
   },
   "private": true
 }
